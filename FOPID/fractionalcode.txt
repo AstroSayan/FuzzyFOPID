@@ -1,0 +1,147 @@
+t=0:0.01:%pi; alpha=[0.6 0.7 0.8]; h=0.001;
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\grunwald.sci'); f=exp(-4*t).*cos(2*t+1);
+for i=1:length(alpha)
+df=grunwald(f,t,alpha(i),h);
+plot(t,df')
+end
+xlabel('Time (sec)'); ylabel('Amplitude');
+legend(['$\alpha=0.6$','$\alpha=0.7$','$\alpha=0.8$']);
+
+
+
+t=0:0.01:%pi; alpha=[-1:0.1:1]; h=0.001; F=[];
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\grunwald.sci'); f=exp(-4*t).*cos(2*t+1);
+for i=alpha
+F=[F grunwald(f,t,i,h)];
+end
+surf(t,alpha,F'); xlabel('t');ylabel('$\alpha$');
+zlabel('$\mathcal{D}_t^{\alpha}f(t)$');
+
+
+
+N=5; wl=10^-5; wh=10^5; alp=0.8;
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\oustaloup.sci'); G1=oustaloup(alp,N,wl,wh);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\refOustaloup.sci'); G2=refOustaloup(alp,N,wl,wh);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\matsuda.sci'); G3=matsuda(alp,2*N,wl,wh);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\curFit1.sci'); G4=curFit1(alp,N,wl,wh);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\curFit2.sci'); G5=curFit2(alp,N,wl,wh);
+bode([G1;G2;G3;G4;G5],wl,wh,"rad")
+legend('Oustaloup','Refined Oustaloup','Matsuda',...
+'Curve Fitting1','Curve Fitting2');
+scf();
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\firPSE.sci'); G6=firPSE(alp,20*N,0.01);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\iirPSE.sci'); G7=iirPSE(alp,20*N,0.01);
+bode([G6;G7],"rad"); legend('FIR-PSE','IIR-PSE');
+
+
+
+N=5; wl=10^-5; wh=10^5;
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fotf.sci'); n=[1 1]; np=[1 0];
+d=[10 185 288 1]; dp=[3.2 2.5 0.7 0];
+Go=fotf(n,np,d,dp,'o',N,[wl wh]);
+Gr=fotf(n,np,d,dp,'r',N,[wl wh]);
+Gc1=fotf(n,np,d,dp,'cf1',N,[wl wh]);
+Gc2=fotf(n,np,d,dp,'cf2',N,[wl wh]);
+bode([Go;Gr;Gc1;Gc2],wl,wh,"rad")
+legend('Oustaloup','Refined Oustaloup',...
+'Curve Fitting1','Curve Fitting2');
+
+
+clear; clc; N=4; w=[10^-4 10^4]; exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fotf.sci');
+n=[5 2]; np=[0.6 0];
+d=[1 3.1 2.89 2.5 1.2]; dp=[3.3 2.6 1.9 1.4 0];
+G=fotf(n,np,d,dp,'o',N,w);
+scf(); subplot(121); plzr(G);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\rlocus.sci'); subplot(122); rlocus(G,100);
+
+
+scf(); t=0:1:200;
+Gri=csim('impulse',t,G); Grs=csim('step',t,G);
+subplot(121); plot(t,Gri);
+xlabel("Time(sec)"); ylabel("Amplitude");
+title("Impulse Response");
+subplot(122); plot(t,Grs);
+xlabel("Time(sec)"); ylabel("Amplitude");
+title("Step Response");
+
+
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\stepinfo.sci'); yf=1.8;
+Gsinfo=stepinfo(G,t,yf);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\stability.sci'); S=stability(n,np,d,dp,'o',N,w);
+h2=h2norm(G); hi=h_norm(G); Li=linf(G);
+
+
+scf(); bode(G,"rad");
+scf(); subplot(121); nyquist(G);
+subplot(122); nyquist(G); hallchart();
+scf(); subplot(121); black(G);
+subplot(122); black(G); nicholschart();
+
+
+scf(); gainplot(G);
+fr=freson(G); fig=gce();
+p1=fig.children(1);
+[phi,db]=phasemag(repfreq(G,fr));
+plot(fr,db(:),'ob');
+t=datatipCreate(p1,[fr db(:)]);
+datatipSetOrientation(t,"upper left");
+
+
+scf(); bode(G,wl,wh); bode_asymp(G,wl,wh);
+
+
+
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\pid.sci'); exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fpid.sci'); C1=pid(1,1,1);
+C2=fpid(1,1,1,[0.98 0.85],'o',5,[10^-5 10^5]);
+C3=fpid(1,1,1,[0.98 0.85],'r',5,[10^-5 10^5]);
+C4=fpid(1,1,1,[0.98 0.85],'m',2*5,[10^-5 10^5]);
+C5=fpid(1,1,1,[0.98 0.85],'cf1',5,[10^-5 10^5]);
+bode([C1;C2;C3;C4;C5],"rad");
+legend('$PID$','$PI^\lambda D^\mu - Oustaloup$',...
+'$PI^\lambda D^\mu - RefinedOustaloup$',...
+'$PI^\lambda D^\mu - Matsuda$',...
+'$PI^\lambda D^\mu - Curve Fitting$');
+
+
+#important
+
+s=poly(0,'s'); s=syslin('c',s/((0*s)+1));
+G=(3.6215/(330.46*s+1));
+Kp=6.81; Ki=1.01; Kd=1.91;
+lam=0.98; mu=0.75; n=0.05;
+alp=lam; gam=0.1*Kd;
+Ti=Kp/Ki; Kc=Kp/Ti; Td=Kd/Kp;
+N=5; wl=10^-3; wh=10^3;
+
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\pid.sci'); C1=pid(Kp,Ki,Kd); C11=pid(Kp,Ki,0);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fpid.sci');
+C2=fpid(Kp,Ki,Kd,[lam mu],'o',N,[wl wh]);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fpi.sci'); C21=fpi(Kp,Ki,lam,'o',N,[wl wh]);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fpidTen.sci');
+C3= fpidTen(Kp,Ki,0,'o',n,N,[wl wh]);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\IMCfpid.sci');
+C4=IMCfpid(Kp,Ki,Kd,gam,alp,'o',N,[wl wh]);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\modFPID.sci'); C5=modFPID(Kc,Ti,mu,'o',N,[wl wh]);
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\fpiLuo.sci'); C6=fpiLuo(Kp,Ki,lam);
+Gcl1=(G*C1)/(1+(G*C1)); Gcl11=(G*C11)/(1+(G*C11));
+Gcl2=(G*C2)/(1+(G*C2)); Gcl21=(G*C21)/(1+(G*C21));
+Gcl3=(G*C3)/(1+(G*C3)); Gcl4=(G*C4)/(1+(G*C4));
+Gcl5=(G*C5)/(1+(G*C5)); Gcl6=(G*C6)/(1+(G*C6));
+
+t=0:0.01:200; scf();
+plot([t',t',t',t',t',t',t',t'],...
+[csim('step',t,Gcl1)',csim('step',t,Gcl11)',...
+csim('step',t,Gcl21)',csim('step',t,Gcl2)',...
+csim('step',t,Gcl3)',csim('step',t,Gcl4)',...
+csim('step',t,Gcl5)',csim('step',t,Gcl6)']);
+legend('PID','PI','$\mathrm{PI^\lambda}$',...
+'$\mathrm{PI^\lambda D^\mu}$','$\mathrm{(PID)^n}$',...
+'IMC PID','Mod FPID','$\mathrm{[PI]^\lambda}$',...
+"in_lower_right");
+xlabel("Time (sec)"); ylabel("Amplitude");
+
+exec('C:\Users\SAYAN\Documents\FuzzyFOPID\stepinfo.sci'); yf=1;
+Gcl1s=stepinfo(Gcl1,t,yf); Gcl11s=stepinfo(Gcl11,t,yf);
+Gcl2s=stepinfo(Gcl2,t,yf); Gcl21s=stepinfo(Gcl21,t,yf);
+Gcl3s=stepinfo(Gcl3,t,yf); Gcl4s=stepinfo(Gcl4,t,yf);
+Gcl5s=stepinfo(Gcl5,t,yf); Gcl6s=stepinfo(Gcl6,t,yf);
